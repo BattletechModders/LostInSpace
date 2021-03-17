@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using BattleTech;
 using BattleTech.Save;
@@ -18,41 +19,75 @@ namespace LostInSpace.Patches
 {
     class SGS_Patches
     {
-        [HarmonyPatch(typeof(SimGameState), "OnDayPassed")]
-        public static class SimGameState_OnDayPassed_Patch
+        [HarmonyPatch(typeof(SimGameState), "ApplySimGameEventResult",
+            new Type[] {typeof(SimGameEventResult), typeof(List<object>), typeof(SimGameEventTracker)})]
+        public static class SimGameState_ApplySimGameEventResult_Patch
         {
-            public static bool Prepare()
+            private static Regex Travel_Restrict =
+                new Regex("^LiS__(?<type>.*?)__(?<system>.*?)__(?<hidden>.*)$", RegexOptions.Compiled); //shamelessly stolen from BlueWinds
+
+            public static void Prefix(SimGameState __instance, ref SimGameEventResult result)
             {
-                return false;
-            }
-            static void Postfix(SimGameState __instance)
-            {
-                foreach (var system in __instance.StarSystems)
+                if (result.Scope == EventScope.Company && result.AddedTags != null)
                 {
-
-                    if (system.Def.TravelRequirements.Any(x =>
-                        x.ExclusionTags.Any(y => y.EndsWith("HIDDEN")) ||
-                        x.RequirementTags.Any(z => z.EndsWith("HIDDEN"))))
+                    foreach (string addedTag in result.AddedTags.ToList())
                     {
-                        var xclTags =
-                            system.Def.TravelRequirements.Where(x =>
-                                x.ExclusionTags.Any(y => y.EndsWith("HIDDEN"))).SelectMany(x => x.ExclusionTags).ToList();
-
-                        var reqTags =
-                            system.Def.TravelRequirements.Where(x =>
-                                    x.RequirementTags.Any(y => y.EndsWith("HIDDEN"))).SelectMany(x => x.RequirementTags)
-                                .ToList();
-
-                        if ((!__instance.CompanyTags.Any(x => reqTags.Contains(x))) ||
-                            (__instance.CompanyTags.Any(x => xclTags.Contains(x))))
+                        try
                         {
-                            WIIC.cleanupSystem(system);
+                            MatchCollection matches = Travel_Restrict.Matches(addedTag);
+                            if (matches.Count > 0)
+                            {
+                                var systemID = matches[0].Groups["system"].Value;
+                                var system = __instance.GetSystemById(systemID);
+                                var type = matches[0].Groups["type"].Value;
+
+                                if (type == "NavReq")
+                                {
+                                    var reqDef = new RequirementDef()
+                                    {
+                                        Scope = EventScope.Company,
+                                        RequirementTags = new TagSet(addedTag)
+                                    };
+
+                                    var companyReq =
+                                        system.Def.TravelRequirements.FirstOrDefault(x =>
+                                            x.Scope == EventScope.Company);
+                                    if (companyReq == null) system.Def.TravelRequirements.Add(reqDef);
+                                    else companyReq.RequirementTags.Add(addedTag);
+                                    LostInSpaceInit.modLog.Debug?.Write(
+                                        $"Added TravelRequirements to {system.Name}: Requirement Tag {addedTag}");
+                                    result.AddedTags.Remove(addedTag);
+                                    continue;
+                                }
+
+                                if (type == "NavExc")
+                                {
+                                    var reqDef = new RequirementDef()
+                                    {
+                                        Scope = EventScope.Company,
+                                        RequirementTags = new TagSet(addedTag)
+                                    };
+
+                                    var companyReq =
+                                        system.Def.TravelRequirements.FirstOrDefault(x =>
+                                            x.Scope == EventScope.Company);
+                                    if (companyReq == null) system.Def.TravelRequirements.Add(reqDef);
+                                    else companyReq.ExclusionTags.Add(addedTag);
+                                    LostInSpaceInit.modLog.Debug?.Write(
+                                        $"Added TravelRequirements to {system.Name}: Exclusion Tag {addedTag}");
+                                    result.AddedTags.Remove(addedTag);
+                                    continue;
+                                }
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            LostInSpaceInit.modLog.Error?.Write(e);
                         }
                     }
                 }
             }
         }
-
 
         private static MethodInfo methodSetStarVis =
             AccessTools.Method(typeof(StarmapSystemRenderer), "SetStarVisibility");
@@ -77,7 +112,7 @@ namespace LostInSpace.Patches
 
                         foreach (var travelReqs in system.Value)
                         {
-                            if (travelReqs.StartsWith("LiS_NavExc_"))
+                            if (travelReqs.StartsWith("LiS__NavExc__"))
                             {
                                 var reqDef = new RequirementDef()
                                 {
@@ -94,7 +129,7 @@ namespace LostInSpace.Patches
                                     $"Added TravelRequirements to {starsystem.Name}: Exclusion Tag {travelReqs}");
                             }
 
-                            if (travelReqs.StartsWith("LiS_NavReq_"))
+                            if (travelReqs.StartsWith("LiS__NavReq__"))
                             {
                                 var reqDef = new RequirementDef()
                                 {
@@ -117,18 +152,18 @@ namespace LostInSpace.Patches
                 foreach (var starmapSystemRenderer in new List<StarmapSystemRenderer>( ___systemDictionary.Values))
                 {
 
-                    if (starmapSystemRenderer.system.System.Def.TravelRequirements.Any(x=>x.ExclusionTags.Any(y=>y.EndsWith("_HIDDEN")) || x.RequirementTags.Any(z=>z.EndsWith("_HIDDEN"))))
+                    if (starmapSystemRenderer.system.System.Def.TravelRequirements.Any(x=>x.ExclusionTags.Any(y=>y.EndsWith("__HIDDEN")) || x.RequirementTags.Any(z=>z.EndsWith("__HIDDEN"))))
                     {
                         LostInSpaceInit.modLog.Debug?.Write(
                             $"Found travel restriction for {starmapSystemRenderer.system.System.Name}");
 
                         var xclTags =
                             starmapSystemRenderer.system.System.Def.TravelRequirements.SelectMany(x =>
-                                x.ExclusionTags.Where(y => y.EndsWith("_HIDDEN"))).ToList();
+                                x.ExclusionTags.Where(y => y.EndsWith("__HIDDEN"))).ToList();
 
                         var reqTags =
                             starmapSystemRenderer.system.System.Def.TravelRequirements.SelectMany(x =>
-                                x.RequirementTags.Where(y => y.EndsWith("_HIDDEN"))).ToList();
+                                x.RequirementTags.Where(y => y.EndsWith("__HIDDEN"))).ToList();
 
                         if(!sim.CompanyTags.Intersect(reqTags).Any() || sim.CompanyTags.Intersect(xclTags).Any())
                         {
