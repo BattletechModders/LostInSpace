@@ -57,12 +57,10 @@
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>$(BTPATH)\BattleTech_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
-    <Reference Include="WarTechIIC">
-      <HintPath>D:\SteamLibrary\steamapps\common\BATTLETECH\Mods\WarTechIIC\WarTechIIC.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Framework\Holder.cs" />
+    <Compile Include="Framework\Logger.cs" />
     <Compile Include="LostInSpaceInit.cs" />
     <Compile Include="Patches\SGS_Patches.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

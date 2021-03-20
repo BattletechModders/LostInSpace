@@ -1,117 +1,213 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using BattleTech;
 using HBS.Collections;
 
 namespace LostInSpace.Framework
 {
-    public class Util
+    public static class Util
     {
-        private static Util _instance;
-        public Dictionary<string, List<string>> hiddenSystemsDict;
-
-
-        public static Util HolderInstance
+        public static MethodInfo WIIC_Cleanup = null;
+        public static void FinishedLoading(List<string> loadOrder)
         {
-            get
+            detectWIIC();
+        }
+
+        public static void detectWIIC()
+        {
+            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            foreach (Assembly assembly in assemblies)
             {
-                if (_instance == null) _instance = new Util();
-                return _instance;
+                if (assembly.FullName.StartsWith("WarTechIIC"))
+                {
+                    Type helperType = assembly.GetType("WarTechIIC.WIIC");
+                    if (helperType != null) {
+                        WIIC_Cleanup = helperType.GetMethod("cleanupSystem", BindingFlags.Static | BindingFlags.Public);
+                    }
+                    LostInSpaceInit.modLog.LogMessage(
+                        $"WarTechIIC detected");
+                }
             }
         }
 
-        internal void Initialize()
-        {
-            hiddenSystemsDict = LostInSpaceInit.modSettings.hiddenSystems;
-            LostInSpaceInit.modLog.Debug?.Write(
-                $"Initializing hiddenSystems from settings.");
-        }
+        private static Regex StarSystemTravel_Restrict =
+            new Regex("^LiS__(?<type>.*?)__(?<ident>.*?)__(?<system>.*?)__(?<hidden>.*)$",
+                RegexOptions.Compiled); //shamelessly stolen from BlueWinds
 
-        public void RemoveSystemRestrictions(string systemID, List<string> tags = null) //systemID needs to have starsystemdef_// // tags can be null, which will clear all custom restrictions from the def//
+        public static void RemoveSystemRestrictions(string systemID, List<string> tags = null) //systemID needs to have starsystemdef_// // tags can be null, which will clear all custom restrictions from the def//
         {
-            if (!hiddenSystemsDict.ContainsKey(systemID))
-            {
-                LostInSpaceInit.modLog.Debug?.Write(
-                    $"No system with id {systemID} found in hiddenSystemsDict, ignoring.");
-                return;
-            }
+
             var sim = UnityGameInstance.BattleTechGame.Simulation;
             var system = sim.GetSystemById(systemID);
 
             if (tags == null)
             {
-                LostInSpaceInit.modLog.Debug?.Write(
-                    $"Removing all custom travel restrictions from {systemID}.");
+                LostInSpaceInit.modLog.LogMessage(
+                    $"RemoveSystemRestrictions: Removing all custom travel restrictions from {systemID}.");
 
-                foreach (var tag in new List<string>(hiddenSystemsDict[systemID]))
+                foreach (var tag in new List<string>(system.Tags))
                 {
-                    var cReqs = system.Def.TravelRequirements.Where(x => x.Scope == EventScope.Company);
-                    foreach (var cReq in cReqs)
+                    MatchCollection matches2 = StarSystemTravel_Restrict.Matches(tag); 
+                    if (matches2.Count > 0)
                     {
-                        cReq.ExclusionTags.Remove(tag);
-                        cReq.RequirementTags.Remove(tag);
+                        var type = matches2[0].Groups["type"].Value;
+                        system.Tags.Remove(tag);
+
+                        if (type == "NavReq")
+                        {
+                            var reqDef = new RequirementDef()
+                            {
+                                Scope = EventScope.Company,
+                                RequirementTags = new TagSet(tag)
+                            };
+
+                            var companyReq =
+                                system.Def.TravelRequirements.FirstOrDefault(x =>
+                                    x.Scope == EventScope.Company);
+                            if (companyReq == null) continue;
+                            else companyReq.RequirementTags.Remove(tag);
+                            LostInSpaceInit.modLog.LogMessage(
+                                $"RemoveSystemRestrictions: Removed TravelRequirements from {system.Name}: Requirement Tag {tag}");
+                            continue;
+                        }
+
+                        if (type == "NavExc")
+                        {
+                            var excDef = new RequirementDef()
+                            {
+                                Scope = EventScope.Company,
+                                ExclusionTags = new TagSet(tag)
+                            };
+
+                            var companyReq =
+                                system.Def.TravelRequirements.FirstOrDefault(x =>
+                                    x.Scope == EventScope.Company);
+                            if (companyReq == null) continue;
+                            else companyReq.ExclusionTags.Remove(tag);
+                            LostInSpaceInit.modLog.LogMessage(
+                                $"RemoveSystemRestrictions: Removed TravelRequirements from {system.Name}: Exclusion Tag {tag}");
+                            continue;
+                        }
                     }
+                    system.Tags.Remove(tag);
+                    LostInSpaceInit.modLog.LogMessage($"RemoveSystemRestrictions: Removed tag: {tag} from {system.Name}.");
                 }
-                hiddenSystemsDict.Remove(systemID);
                 return;
             }
 
             if (tags.Count > 0)
             {
                 foreach (var tag in tags)
-                {
-                    LostInSpaceInit.modLog.Debug?.Write(
-                        $"Removing travel restriction tag: {tag} from {systemID}.");
-
-                    var cReqs = system.Def.TravelRequirements.Where(x => x.Scope == EventScope.Company);
-                    foreach (var cReq in cReqs)
+                { 
+                    LostInSpaceInit.modLog.LogMessage(
+                        $"RemoveSystemRestrictions: Removing custom travel restriction: {tag} from {systemID}.");
+                    MatchCollection matches2 = StarSystemTravel_Restrict.Matches(tag); 
+                    if (matches2.Count > 0)
                     {
-                        cReq.ExclusionTags.Remove(tag);
-                        cReq.RequirementTags.Remove(tag);
-                    }
-                    hiddenSystemsDict[systemID].Remove(tag);
-                }
-                return;
-            }
+                        var type = matches2[0].Groups["type"].Value;
+                        system.Tags.Remove(tag);
 
+                        if (type == "NavReq")
+                        {
+                            var reqDef = new RequirementDef()
+                            {
+                                Scope = EventScope.Company,
+                                RequirementTags = new TagSet(tag)
+                            };
+
+                            var companyReq =
+                                system.Def.TravelRequirements.FirstOrDefault(x =>
+                                    x.Scope == EventScope.Company);
+                            if (companyReq == null) continue;
+                            else companyReq.RequirementTags.Remove(tag);
+                            LostInSpaceInit.modLog.LogMessage(
+                                $"RemoveSystemRestrictions: Removed TravelRequirements from {system.Name}: Requirement Tag {tag}");
+                            continue;
+                        }
+
+                        if (type == "NavExc")
+                        {
+                            var excDef = new RequirementDef()
+                            {
+                                Scope = EventScope.Company,
+                                ExclusionTags = new TagSet(tag)
+                            };
+
+                            var companyReq =
+                                system.Def.TravelRequirements.FirstOrDefault(x =>
+                                    x.Scope == EventScope.Company);
+                            if (companyReq == null) continue;
+                            else companyReq.ExclusionTags.Remove(tag);
+                            LostInSpaceInit.modLog.LogMessage(
+                                $"RemoveSystemRestrictions: Removed TravelRequirements from {system.Name}: Exclusion Tag {tag}");
+                            continue;
+                        }
+                    }
+                    system.Tags.Remove(tag);
+                    LostInSpaceInit.modLog.LogMessage($"RemoveSystemRestrictions: Removed tag: {tag} from {system.Name}.");
+                }
+            }
         }
 
-        public void AddSystemRestriction(string systemID, string tagType, bool hidesSystem, List<string> tags) //systemID needs to have starsystemdef_ // tagType is either RequirementTags or ExclusionTags // hidesSystem = bool
+        public static void AddSystemRestrictions(string systemID, List<string> tags) //systemID needs to have starsystemdef_
         {
             var sim = UnityGameInstance.BattleTechGame.Simulation;
             var system = sim.GetSystemById(systemID);
 
-            if (!hiddenSystemsDict.ContainsKey(systemID))
-            {
-                hiddenSystemsDict.Add(systemID, new List<string>());
-            }
-
             foreach (var tag in tags)
             {
-                string finalTag;
-                if (hidesSystem) finalTag = tag + "_HIDDEN";
-                
-                if (tagType == "RequirementTags")
+                LostInSpaceInit.modLog.LogMessage($"AddSystemRestrictions: Adding tag: {tag} to {system.Name}.");
+                system.Tags.Add(tag);
+
                 {
-                    finalTag = tag.Insert(0, "LiS_NavReq_");
-                    hiddenSystemsDict[systemID].Add(finalTag);
-                    LostInSpaceInit.modLog.Debug?.Write(
-                        $"Added TravelRequirements to {system.Name}: Requirement Tag {finalTag}");
-                }
-                if (tagType=="ExclusionTags")
-                {
-                    finalTag = tag.Insert(0, "LiS_NavExc_");
-                    hiddenSystemsDict[systemID].Add(finalTag);
-                    LostInSpaceInit.modLog.Debug?.Write(
-                        $"Added TravelRequirements to {system.Name}: Exclusion Tag {finalTag}");
+                    MatchCollection matches = StarSystemTravel_Restrict.Matches(tag);
+                    if (matches.Count > 0)
+                    {
+                        var type = matches[0].Groups["type"].Value;
+
+                        if (type == "NavReq")
+                        {
+                            var reqDef = new RequirementDef()
+                            {
+                                Scope = EventScope.Company,
+                                RequirementTags = new TagSet(tag)
+                            };
+
+                            var companyReq =
+                                system.Def.TravelRequirements.FirstOrDefault(x =>
+                                    x.Scope == EventScope.Company);
+                            if (companyReq == null) system.Def.TravelRequirements.Add(reqDef);
+                            else companyReq.RequirementTags.Add(tag);
+                            LostInSpaceInit.modLog.LogMessage(
+                                $"AddSystemRestrictions: Added TravelRequirements to {system.Name}: Requirement Tag {tag}");
+                            continue;
+                        }
+
+                        if (type == "NavExc")
+                        {
+                            var excDef = new RequirementDef()
+                            {
+                                Scope = EventScope.Company,
+                                ExclusionTags = new TagSet(tag)
+                            };
+
+                            var companyReq =
+                                system.Def.TravelRequirements.FirstOrDefault(x =>
+                                    x.Scope == EventScope.Company);
+                            if (companyReq == null) system.Def.TravelRequirements.Add(excDef);
+                            else companyReq.ExclusionTags.Add(tag);
+                            LostInSpaceInit.modLog.LogMessage(
+                                $"AddSystemRestrictions: Added TravelRequirements to {system.Name}: Exclusion Tag {tag}");
+                            continue;
+                        }
+                    }
                 }
             }
-            
         }
     }
-
-
 }

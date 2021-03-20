@@ -5,17 +5,15 @@ using System.Reflection;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using Harmony;
-using IRBTModUtils.Logging;
 using BattleTech;
 using HBS.Collections;
 using LostInSpace.Framework;
-using UnityEngine;
 
 namespace LostInSpace
 {
     public class LostInSpaceInit
     {
-        internal static DeferringLogger modLog;
+        internal static Logger modLog;
         internal static string modDir;
         public static Settings modSettings;
 
@@ -32,21 +30,20 @@ namespace LostInSpace
                     string jsData = reader.ReadToEnd();
                     modSettings = JsonConvert.DeserializeObject<Settings>(jsData);
                 }
-                modLog = new DeferringLogger(modDir, "LostInSpace", "LostInSpace", modSettings.debugLog, modSettings.traceLog);
-                modLog.Debug?.Write($"Loaded settings from {modDir}/settings.json");
+                modLog = new Logger(modDir, "LostInSpace", true);
+                modLog.LogMessage($"Loaded settings from {modDir}/settings.json");
                 
             }
             catch (Exception ex)
             {
                 modSettings = new Settings();
-                modLog = new DeferringLogger(modDir, "LostInSpace", "LostInSpace", true, true);
-                modLog.Error?.Write(ex);
+                modLog = new Logger(modDir, "LostInSpace",  true);
+                modLog.LogException(ex);
             }
 
             var harmony = HarmonyInstance.Create(HarmonyPackage);
             harmony.PatchAll(Assembly.GetExecutingAssembly());
-            Util.HolderInstance.Initialize();
-            modLog.Info?.Write($"Initializing PracticeMakesPerfect - Version {typeof(Settings).Assembly.GetName().Version}");
+            modLog.LogMessage($"Initializing LostInSpace - Version {typeof(Settings).Assembly.GetName().Version}");
         }
     }
 
