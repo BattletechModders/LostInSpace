@@ -28,24 +28,24 @@ namespace LostInSpace.Patches
                     RegexOptions.Compiled); //shamelessly stolen from BlueWinds
 
             public static void Postfix(SimGameState __instance)
-            {
-                foreach (var system in LostInSpaceInit.modSettings.hiddenSystems)
-                {
-                    var starsystem = __instance.GetSystemById(system.Key);
-                    if (starsystem == null)
-                    {
-                        LostInSpaceInit.modLog.LogMessage(
-                            $"ERROR: Could not find system with systemId {system.Key}");
-                        continue;
-                    }
-
-                    foreach (var travelReqs in system.Value)
-                    {
-                        LostInSpaceInit.modLog.LogMessage(
-                            $"Adding {travelReqs} to {starsystem.Name} tags");
-                        starsystem.Tags.Add(travelReqs);
-                    }
-                }
+            {//
+             //   foreach (var system in LostInSpaceInit.modSettings.hiddenSystems)
+             //   {
+             //       var starsystem = __instance.GetSystemById(system.Key);
+             //       if (starsystem == null)
+             //       {
+             //           LostInSpaceInit.modLog.LogMessage(
+             //               $"ERROR: Could not find system with systemId {system.Key}");
+             //           continue;
+             //       }
+             //
+             //       foreach (var travelReqs in system.Value)
+             //       {
+             //           LostInSpaceInit.modLog.LogMessage(
+             //               $"Adding {travelReqs} to {starsystem.Name} tags");
+             //           starsystem.Tags.Add(travelReqs);
+             //       }
+             //   }
 
                 // process tags into restrictions here!!
 
