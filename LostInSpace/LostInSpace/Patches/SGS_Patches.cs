@@ -102,17 +102,19 @@ namespace LostInSpace.Patches
             }
         }
 
-        [HarmonyPatch(typeof(SimGameState), "Init")]
-        public static class SimGameState_InitPatch
+        [HarmonyPatch(typeof(SGCharacterCreationCareerBackgroundSelectionPanel), "Done")]
+        public static class SGCharacterCreationCareerBackgroundSelectionPanel_Done_Patch
         {
             private static Regex StarSystemTravel_Restrict =
                 new Regex("^LiS__(?<type>.*?)__(?<ident>.*?)__(?<system>.*?)__(?<hidden>.*)$", RegexOptions.Compiled); //shamelessly stolen from BlueWinds
 
-            public static void Postfix(SimGameState __instance)
+            public static void Postfix(SGCharacterCreationCareerBackgroundSelectionPanel __instance)
             {
+                var sim = UnityGameInstance.BattleTechGame.Simulation;
+                if (sim == null) return;
                 foreach (var system in LostInSpaceInit.modSettings.hiddenSystems)
                 {
-                    var starsystem = __instance.GetSystemById(system.Key);
+                    var starsystem = sim.GetSystemById(system.Key);
                     if (starsystem == null)
                     {
                         LostInSpaceInit.modLog.LogMessage(
@@ -130,7 +132,7 @@ namespace LostInSpace.Patches
 
                 // process tags into restrictions here!!
 
-                foreach (var SGS_system in __instance.StarSystems)
+                foreach (var SGS_system in sim.StarSystems)
                 {
                     if (!SGS_system.Tags.Any(x => x.StartsWith("LiS__"))) continue;
 
