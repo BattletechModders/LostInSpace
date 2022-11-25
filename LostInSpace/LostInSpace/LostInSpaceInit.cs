@@ -7,13 +7,14 @@ using Newtonsoft.Json;
 using Harmony;
 using BattleTech;
 using HBS.Collections;
+using IRBTModUtils.Logging;
 using LostInSpace.Framework;
 
 namespace LostInSpace
 {
     public class LostInSpaceInit
     {
-        internal static Logger modLog;
+        internal static DeferringLogger modLog;
         internal static string modDir;
         public static Settings modSettings;
 
@@ -30,20 +31,20 @@ namespace LostInSpace
                     string jsData = reader.ReadToEnd();
                     modSettings = JsonConvert.DeserializeObject<Settings>(jsData);
                 }
-                modLog = new Logger(modDir, "LostInSpace", true);
-                modLog.LogMessage($"Loaded settings from {modDir}/settings.json");
+                modLog = new DeferringLogger(modDir, "LostInSpace", modSettings.debugLog, modSettings.traceLog);
+                modLog?.Info?.Write($"Loaded settings from {modDir}/settings.json");
                 
             }
             catch (Exception ex)
             {
                 modSettings = new Settings();
-                modLog = new Logger(modDir, "LostInSpace",  true);
-                modLog.LogException(ex);
+                modLog = new DeferringLogger(modDir, "LostInSpace",  true, true);
+                modLog?.Error?.Write(ex);
             }
 
             var harmony = HarmonyInstance.Create(HarmonyPackage);
             harmony.PatchAll(Assembly.GetExecutingAssembly());
-            modLog.LogMessage($"Initializing LostInSpace - Version {typeof(Settings).Assembly.GetName().Version}");
+            modLog?.Info?.Write($"Initializing LostInSpace - Version {typeof(Settings).Assembly.GetName().Version}");
         }
     }
 

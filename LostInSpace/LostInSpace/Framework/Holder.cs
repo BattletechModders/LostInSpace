@@ -29,7 +29,7 @@ namespace LostInSpace.Framework
                     if (helperType != null) {
                         WIIC_Cleanup = helperType.GetMethod("cleanupSystem", BindingFlags.Static | BindingFlags.Public);
                     }
-                    LostInSpaceInit.modLog.LogMessage(
+                    LostInSpaceInit.modLog?.Info?.Write(
                         $"WarTechIIC detected");
                 }
             }
@@ -47,7 +47,7 @@ namespace LostInSpace.Framework
 
             if (tags == null)
             {
-                LostInSpaceInit.modLog.LogMessage(
+                LostInSpaceInit.modLog?.Info?.Write(
                     $"RemoveSystemRestrictions: Removing all custom travel restrictions from {systemID}.");
 
                 foreach (var tag in new List<string>(system.Tags))
@@ -71,7 +71,7 @@ namespace LostInSpace.Framework
                                     x.Scope == EventScope.Company);
                             if (companyReq == null) continue;
                             else companyReq.RequirementTags.Remove(tag);
-                            LostInSpaceInit.modLog.LogMessage(
+                            LostInSpaceInit.modLog?.Info?.Write(
                                 $"RemoveSystemRestrictions: Removed TravelRequirements from {system.Name}: Requirement Tag {tag}");
                             continue;
                         }
@@ -89,13 +89,13 @@ namespace LostInSpace.Framework
                                     x.Scope == EventScope.Company);
                             if (companyReq == null) continue;
                             else companyReq.ExclusionTags.Remove(tag);
-                            LostInSpaceInit.modLog.LogMessage(
+                            LostInSpaceInit.modLog?.Info?.Write(
                                 $"RemoveSystemRestrictions: Removed TravelRequirements from {system.Name}: Exclusion Tag {tag}");
                             continue;
                         }
                     }
                     system.Tags.Remove(tag);
-                    LostInSpaceInit.modLog.LogMessage($"RemoveSystemRestrictions: Removed tag: {tag} from {system.Name}.");
+                    LostInSpaceInit.modLog?.Info?.Write($"RemoveSystemRestrictions: Removed tag: {tag} from {system.Name}.");
                 }
                 return;
             }
@@ -104,7 +104,7 @@ namespace LostInSpace.Framework
             {
                 foreach (var tag in tags)
                 { 
-                    LostInSpaceInit.modLog.LogMessage(
+                    LostInSpaceInit.modLog?.Info?.Write(
                         $"RemoveSystemRestrictions: Removing custom travel restriction: {tag} from {systemID}.");
                     MatchCollection matches2 = StarSystemTravel_Restrict.Matches(tag); 
                     if (matches2.Count > 0)
@@ -125,7 +125,7 @@ namespace LostInSpace.Framework
                                     x.Scope == EventScope.Company);
                             if (companyReq == null) continue;
                             else companyReq.RequirementTags.Remove(tag);
-                            LostInSpaceInit.modLog.LogMessage(
+                            LostInSpaceInit.modLog?.Info?.Write(
                                 $"RemoveSystemRestrictions: Removed TravelRequirements from {system.Name}: Requirement Tag {tag}");
                             continue;
                         }
@@ -143,13 +143,13 @@ namespace LostInSpace.Framework
                                     x.Scope == EventScope.Company);
                             if (companyReq == null) continue;
                             else companyReq.ExclusionTags.Remove(tag);
-                            LostInSpaceInit.modLog.LogMessage(
+                            LostInSpaceInit.modLog?.Info?.Write(
                                 $"RemoveSystemRestrictions: Removed TravelRequirements from {system.Name}: Exclusion Tag {tag}");
                             continue;
                         }
                     }
                     system.Tags.Remove(tag);
-                    LostInSpaceInit.modLog.LogMessage($"RemoveSystemRestrictions: Removed tag: {tag} from {system.Name}.");
+                    LostInSpaceInit.modLog?.Info?.Write($"RemoveSystemRestrictions: Removed tag: {tag} from {system.Name}.");
                 }
             }
         }
@@ -161,7 +161,7 @@ namespace LostInSpace.Framework
 
             foreach (var tag in tags)
             {
-                LostInSpaceInit.modLog.LogMessage($"AddSystemRestrictions: Adding tag: {tag} to {system.Name}.");
+                LostInSpaceInit.modLog?.Info?.Write($"AddSystemRestrictions: Adding tag: {tag} to {system.Name}.");
                 system.Tags.Add(tag);
 
                 {
@@ -183,7 +183,7 @@ namespace LostInSpace.Framework
                                     x.Scope == EventScope.Company);
                             if (companyReq == null) system.Def.TravelRequirements.Add(reqDef);
                             else companyReq.RequirementTags.Add(tag);
-                            LostInSpaceInit.modLog.LogMessage(
+                            LostInSpaceInit.modLog?.Info?.Write(
                                 $"AddSystemRestrictions: Added TravelRequirements to {system.Name}: Requirement Tag {tag}");
                             continue;
                         }
@@ -201,7 +201,7 @@ namespace LostInSpace.Framework
                                     x.Scope == EventScope.Company);
                             if (companyReq == null) system.Def.TravelRequirements.Add(excDef);
                             else companyReq.ExclusionTags.Add(tag);
-                            LostInSpaceInit.modLog.LogMessage(
+                            LostInSpaceInit.modLog?.Info?.Write(
                                 $"AddSystemRestrictions: Added TravelRequirements to {system.Name}: Exclusion Tag {tag}");
                             continue;
                         }
