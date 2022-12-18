@@ -520,11 +520,11 @@ namespace LostInSpace.Patches
         public static class StarmapRenderer_RefreshSystems_Patch
         {
             static bool Prepare() => false; //disable, move patch to SetStarVisibility
-            static void Postfix(StarmapRenderer __instance, Dictionary<GameObject, StarmapSystemRenderer> ___systemDictionary)
+            static void Postfix(StarmapRenderer __instance)
             {
                 var sim = UnityGameInstance.BattleTechGame.Simulation;
 
-                foreach (var starmapSystemRenderer in new List<StarmapSystemRenderer>( ___systemDictionary.Values))
+                foreach (var starmapSystemRenderer in new List<StarmapSystemRenderer>( __instance.systemDictionary.Values))
                 {
 
                     if (starmapSystemRenderer.system.System.Def.TravelRequirements.Any(x=>x.ExclusionTags.Any(y=>y.EndsWith("__HIDDEN")) || x.RequirementTags.Any(z=>z.EndsWith("__HIDDEN"))))
