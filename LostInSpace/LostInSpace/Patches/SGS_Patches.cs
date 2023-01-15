@@ -229,6 +229,7 @@ namespace LostInSpace.Patches
                                     else companyReq.RequirementTags.Add(tag);
                                     LostInSpaceInit.modLog?.Info?.Write(
                                         $"Added TravelRequirements to {system.Name}: Requirement Tag {tag}");
+                                    result.AddedTags.Remove(addedTag);
                                     continue;
                                 }
 
@@ -247,6 +248,7 @@ namespace LostInSpace.Patches
                                     else companyReq.ExclusionTags.Add(tag);
                                     LostInSpaceInit.modLog?.Info?.Write(
                                         $"Added TravelRequirements to {system.Name}: Exclusion Tag {tag}");
+                                    result.AddedTags.Remove(addedTag);
                                     continue;
                                 }
                             }
@@ -275,6 +277,7 @@ namespace LostInSpace.Patches
                                     else companyReq.RequirementTags.Remove(tag);
                                     LostInSpaceInit.modLog?.Info?.Write(
                                         $"Removed TravelRequirements from {system.Name}: Requirement Tag {tag}");
+                                    result.AddedTags.Remove(addedTag);
                                     continue;
                                 }
 
@@ -293,6 +296,7 @@ namespace LostInSpace.Patches
                                     else companyReq.ExclusionTags.Remove(tag);
                                     LostInSpaceInit.modLog?.Info?.Write(
                                         $"Removed TravelRequirements from {system.Name}: Exclusion Tag {tag}");
+                                    result.AddedTags.Remove(addedTag);
                                     continue;
                                 }
 
