@@ -2,17 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using BattleTech;
-using BattleTech.Save;
 using BattleTech.UI;
-using Harmony;
 using HBS.Collections;
 using LostInSpace.Framework;
-using UnityEngine;
 
 namespace LostInSpace.Patches
 {
@@ -315,8 +309,9 @@ namespace LostInSpace.Patches
         [HarmonyPatch(typeof(SGNavigationScreen), "OnSystemHovered")]
         public static class SGNavigationScreen_OnSystemHovered
         {
-            static bool Prefix(SGNavigationScreen __instance, StarSystem hoveredSystem)
+            static void Prefix(ref bool __runOriginal, SGNavigationScreen __instance, StarSystem hoveredSystem)
             {
+                if (!__runOriginal) return;
                 if (hoveredSystem != null)
                 {
                     var sim = UnityGameInstance.BattleTechGame.Simulation;
@@ -338,19 +333,22 @@ namespace LostInSpace.Patches
                             LostInSpaceInit.modLog?.Trace?.Write(
                                 $"Company tag for {hoveredSystem.Name} travel/vision tag not found, not displaying hover tooltipicon. ");
 
-                            return false;
+                            __runOriginal = false;
+                            return;
                         }
                     }
                 }
-                return true;
+                __runOriginal = true;
+                return;
             }
         }
 
         [HarmonyPatch(typeof(StarmapRenderer), "SetSelectedSystemRenderer")]
         public static class StarmapRenderer_SetSelectedSystemRenderer
         {
-            static bool Prefix(StarmapRenderer __instance, StarmapSystemRenderer systemRenderer)
+            static void Prefix(ref bool __runOriginal, StarmapRenderer __instance, StarmapSystemRenderer systemRenderer)
             {
+                if (!__runOriginal) return;
                 if (systemRenderer != null)
                 {
                     var sim = UnityGameInstance.BattleTechGame.Simulation;
@@ -374,12 +372,13 @@ namespace LostInSpace.Patches
                             LostInSpaceInit.modLog?.Trace?.Write(
                                 $"Company tag for {systemRenderer.system.System.Name} travel/vision tag not found, not selecting system for routing. ");
 
-                            return false;
+                            __runOriginal = false;
+                            return;
                         }
                     }
                 }
-
-                return true;
+                __runOriginal = true;
+                return;
             }
         }
 
@@ -425,8 +424,9 @@ namespace LostInSpace.Patches
         [HarmonyPatch(typeof(StarmapSystemRenderer), "SetBiome")]
         public static class StarmapSystemRenderer_SetBiome
         {
-            static bool Prefix(StarmapSystemRenderer __instance, Biome.BIOMESKIN theBiome)
+            static void Prefix(ref bool __runOriginal, StarmapSystemRenderer __instance, Biome.BIOMESKIN theBiome)
             {
+                if (!__runOriginal) return;
                 var sim = UnityGameInstance.BattleTechGame.Simulation;
                 if (__instance.system.System.Def.TravelRequirements.Any(x => x.ExclusionTags.Any(y => y.EndsWith("__HIDDEN")) || x.RequirementTags.Any(z => z.EndsWith("__HIDDEN"))))
                 {
@@ -446,18 +446,21 @@ namespace LostInSpace.Patches
                         LostInSpaceInit.modLog?.Trace?.Write(
                             $"Company tag for {__instance.system.System.Name} travel/vision tag not found, not displaying biome icon. ");
 
-                        return false;
+                        __runOriginal = false;
+                        return;
                     }
                 }
-                return true;
+                __runOriginal = true;
+                return;
             }
         }
 
         [HarmonyPatch(typeof(StarmapSystemRenderer), "SetStore")]
         public static class StarmapSystemRenderer_SetStore
         {
-            static bool Prefix(StarmapSystemRenderer __instance, string store)
+            static void Prefix(ref bool __runOriginal, StarmapSystemRenderer __instance, string store)
             {
+                if (!__runOriginal) return;
                 var sim = UnityGameInstance.BattleTechGame.Simulation;
                 if (__instance.system.System.Def.TravelRequirements.Any(x => x.ExclusionTags.Any(y => y.EndsWith("__HIDDEN")) || x.RequirementTags.Any(z => z.EndsWith("__HIDDEN"))))
                 {
@@ -477,18 +480,21 @@ namespace LostInSpace.Patches
                         LostInSpaceInit.modLog?.Trace?.Write(
                             $"Company tag for {__instance.system.System.Name} travel/vision tag not found, not displaying store icon. ");
 
-                        return false;
+                        __runOriginal = false;
+                        return;
                     }
                 }
-                return true;
+                __runOriginal = true;
+                return;
             }
         }
 
         [HarmonyPatch(typeof(SGNavStarSystemCallout), "ShowDifficultyWidget")]
         public static class SGNavStarSystemCallout_ShowDifficultyWidget
         {
-            static bool Prefix(SGNavStarSystemCallout __instance, bool active)
+            static void Prefix(ref bool __runOriginal, SGNavStarSystemCallout __instance, bool active)
             {
+                if (!__runOriginal) return;
                 var sim = UnityGameInstance.BattleTechGame.Simulation;
                 if (__instance.SystemRenderer.system.System.Def.TravelRequirements.Any(x => x.ExclusionTags.Any(y => y.EndsWith("__HIDDEN")) || x.RequirementTags.Any(z => z.EndsWith("__HIDDEN"))))
                 {
@@ -508,17 +514,18 @@ namespace LostInSpace.Patches
                         LostInSpaceInit.modLog?.Trace?.Write(
                             $"Company tag for {__instance.SystemRenderer.system.System.Name} travel/vision tag not found, not displaying difficulty callout. ");
 
-                        return false;
+                        __runOriginal = false;
+                        return;
                     }
                 }
-                return true;
+                __runOriginal = true;
+                return;
             }
         }
 
 
         //deprecated below
-        private static MethodInfo methodSetStarVis =
-            AccessTools.Method(typeof(StarmapSystemRenderer), "SetStarVisibility");
+        //private static MethodInfo methodSetStarVis = AccessTools.Method(typeof(StarmapSystemRenderer), "SetStarVisibility");
 
         [HarmonyPatch(typeof(StarmapRenderer), "RefreshSystems")]
         public static class StarmapRenderer_RefreshSystems_Patch
@@ -555,8 +562,8 @@ namespace LostInSpace.Patches
                                 LostInSpaceInit.modLog?.Info?.Write(
                                     $"WIIC found, removing flareup from {starmapSystemRenderer.system.System.Name}.");
                             }
-
-                            methodSetStarVis.Invoke(starmapSystemRenderer, new object[] {false});
+                            starmapSystemRenderer.SetStarVisibility(false);
+                            //methodSetStarVis.Invoke(starmapSystemRenderer, new object[] {false});
                         }
                     }
                 }

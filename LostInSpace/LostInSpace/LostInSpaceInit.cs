@@ -1,14 +1,9 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
 using Newtonsoft.Json;
-using Harmony;
-using BattleTech;
-using HBS.Collections;
 using IRBTModUtils.Logging;
-using LostInSpace.Framework;
 
 namespace LostInSpace
 {
@@ -42,9 +37,10 @@ namespace LostInSpace
                 modLog?.Error?.Write(ex);
             }
 
-            var harmony = HarmonyInstance.Create(HarmonyPackage);
-            harmony.PatchAll(Assembly.GetExecutingAssembly());
+            //var harmony = HarmonyInstance.Create(HarmonyPackage);
+            //harmony.PatchAll(Assembly.GetExecutingAssembly());
             modLog?.Info?.Write($"Initializing LostInSpace - Version {typeof(Settings).Assembly.GetName().Version}");
+            Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), HarmonyPackage);
         }
     }
 
