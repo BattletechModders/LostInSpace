@@ -1,4 +1,7 @@
 # LostInSpace
+
+**v1.1.0.0 and higher requires modtek v3 or higher**
+
 Provides access and visual control over star systems.
 
 Control over starsystem access is done by modifying the TravelRequirements section of the starsystem def at runtime, and system can optionally be visually hidden from players. Control over systems can be done through settings.json, through in-game events, and by calling public API. All three methods work by adding/removing tags to the starsystems, so any tags added/removed in this way will persist when the save is loaded.
