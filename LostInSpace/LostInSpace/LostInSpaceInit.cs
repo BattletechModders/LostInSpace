@@ -3,13 +3,13 @@ using System.IO;
 using System.Reflection;
 using System.Collections.Generic;
 using Newtonsoft.Json;
-using IRBTModUtils.Logging;
+using HBS.Logging;
 
 namespace LostInSpace
 {
     public class LostInSpaceInit
     {
-        internal static DeferringLogger modLog;
+        internal static ILog modLog;
         internal static string modDir;
         public static Settings modSettings;
 
@@ -18,7 +18,7 @@ namespace LostInSpace
         public static void Init(string directory, string settingsJSON)
         {
             modDir = directory;
-            
+
             try
             {
                 using (StreamReader reader = new StreamReader($"{modDir}/settings.json"))
@@ -26,29 +26,25 @@ namespace LostInSpace
                     string jsData = reader.ReadToEnd();
                     modSettings = JsonConvert.DeserializeObject<Settings>(jsData);
                 }
-                modLog = new DeferringLogger(modDir, "LostInSpace", modSettings.debugLog, modSettings.traceLog);
-                modLog?.Info?.Write($"Loaded settings from {modDir}/settings.json");
-                
+
+                modLog = Logger.GetLogger("LostInSpace");
+                modLog.Log($"Loaded settings from {modDir}/settings.json");
+
             }
             catch (Exception ex)
             {
                 modSettings = new Settings();
-                modLog = new DeferringLogger(modDir, "LostInSpace",  true, true);
-                modLog?.Error?.Write(ex);
+                modLog = Logger.GetLogger("LostInSpace");
+                modLog.LogException(ex);
             }
 
-            //var harmony = HarmonyInstance.Create(HarmonyPackage);
-            //harmony.PatchAll(Assembly.GetExecutingAssembly());
-            modLog?.Info?.Write($"Initializing LostInSpace - Version {typeof(Settings).Assembly.GetName().Version}");
+            modLog.Log($"Initializing LostInSpace - Version {typeof(Settings).Assembly.GetName().Version}");
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), HarmonyPackage);
         }
     }
 
     public class Settings
     {
-        public bool debugLog = true;
-        public bool traceLog = true;
-
         public Dictionary<string, List<string>> hiddenSystems = new Dictionary<string, List<string>>();
     }
 }
