@@ -15,8 +15,7 @@ namespace LostInSpace.Patches
         public static class SimGameState_Rehydrate_Patch
         {
             private static Regex StarSystemTravel_Restrict =
-                new Regex("^LiS__(?<type>.*?)__(?<ident>.*?)__(?<system>.*?)__(?<hidden>.*)$",
-                    RegexOptions.Compiled); //shamelessly stolen from BlueWinds
+                new Regex("^LiS__(?<type>.*?)__(?<ident>.*?)__(?<system>.*?)__(?<hidden>.*)$", RegexOptions.Compiled); //shamelessly stolen from BlueWinds
 
             public static void Postfix(SimGameState __instance)
             {//
@@ -25,14 +24,14 @@ namespace LostInSpace.Patches
              //       var starsystem = __instance.GetSystemById(system.Key);
              //       if (starsystem == null)
              //       {
-             //           LostInSpaceInit.modLog?.Info?.Write(
+             //           LostInSpaceInit.modLog.Log(
              //               $"ERROR: Could not find system with systemId {system.Key}");
              //           continue;
              //       }
              //
              //       foreach (var travelReqs in system.Value)
              //       {
-             //           LostInSpaceInit.modLog?.Info?.Write(
+             //           LostInSpaceInit.modLog.Log(
              //               $"Adding {travelReqs} to {starsystem.Name} tags");
              //           starsystem.Tags.Add(travelReqs);
              //       }
@@ -42,9 +41,7 @@ namespace LostInSpace.Patches
 
                 foreach (var SGS_system in __instance.StarSystems)
                 {
-                    if (!SGS_system.Tags.Any(x => x.StartsWith("LiS__"))) continue;
-
-                    foreach (var tag in SGS_system.Tags.Where(x => x.StartsWith("LiS__")))
+                    foreach (var tag in SGS_system.Tags)
                     {
                         MatchCollection matches = StarSystemTravel_Restrict.Matches(tag);
                         if (matches.Count > 0)
@@ -54,37 +51,43 @@ namespace LostInSpace.Patches
 
                             if (type == "NavReq")
                             {
-                                var reqDef = new RequirementDef()
-                                {
-                                    Scope = EventScope.Company,
-                                    RequirementTags = new TagSet(tag)
-                                };
+                                var companyReq = SGS_system.Def.TravelRequirements.FirstOrDefault(x => x.Scope == EventScope.Company);
+                                LostInSpaceInit.modLog.Log($"{SGS_system.Name} - companyReq={companyReq}");
 
-                                var companyReq =
-                                    SGS_system.Def.TravelRequirements.FirstOrDefault(x =>
-                                        x.Scope == EventScope.Company);
-                                if (companyReq == null) SGS_system.Def.TravelRequirements.Add(reqDef);
-                                else companyReq.RequirementTags.Add(tag);
-                                LostInSpaceInit.modLog?.Info?.Write(
-                                    $"Added TravelRequirements to {SGS_system.Name}: Requirement Tag {tag}");
+                                if (companyReq == null) {
+                                    LostInSpaceInit.modLog.Log($"{SGS_system.Name} - no req, adding new one.");
+
+                                    companyReq = new RequirementDef() {
+                                        Scope = EventScope.Company,
+                                        RequirementTags = new TagSet(new string[] { }),
+                                        ExclusionTags = new TagSet(new string[] { })
+                                    };
+                                    SGS_system.Def.TravelRequirements.Add(companyReq);
+                                }
+
+                                companyReq.RequirementTags.Add(tag);
+                                LostInSpaceInit.modLog.Log($"Added TravelRequirements to {SGS_system.Name}: Requirement Tag {tag}");
                                 continue;
                             }
 
                             if (type == "NavExc")
                             {
-                                var excDef = new RequirementDef()
-                                {
-                                    Scope = EventScope.Company,
-                                    ExclusionTags = new TagSet(tag)
-                                };
+                                var companyReq = SGS_system.Def.TravelRequirements.FirstOrDefault(x => x.Scope == EventScope.Company);
+                                LostInSpaceInit.modLog.Log($"{SGS_system.Name} - companyReq={companyReq}");
 
-                                var companyReq =
-                                    SGS_system.Def.TravelRequirements.FirstOrDefault(x =>
-                                        x.Scope == EventScope.Company);
-                                if (companyReq == null) SGS_system.Def.TravelRequirements.Add(excDef);
-                                else companyReq.ExclusionTags.Add(tag);
-                                LostInSpaceInit.modLog?.Info?.Write(
-                                    $"Added TravelRequirements to {SGS_system.Name}: Exclusion Tag {tag}");
+                                if (companyReq == null) {
+                                    LostInSpaceInit.modLog.Log($"{SGS_system.Name} - no req, adding new one.");
+
+                                    companyReq = new RequirementDef() {
+                                        Scope = EventScope.Company,
+                                        RequirementTags = new TagSet(new string[] { }),
+                                        ExclusionTags = new TagSet(new string[] { })
+                                    };
+                                    SGS_system.Def.TravelRequirements.Add(companyReq);
+                                }
+
+                                companyReq.ExclusionTags.Add(tag);
+                                LostInSpaceInit.modLog.Log($"Added TravelRequirements to {SGS_system.Name}: Exclusion Tag {tag}");
                                 continue;
                             }
                         }
@@ -94,88 +97,35 @@ namespace LostInSpace.Patches
         }
 
         [HarmonyPatch(typeof(SGCharacterCreationCareerBackgroundSelectionPanel), "Done")]
-        public static class SGCharacterCreationCareerBackgroundSelectionPanel_Done_Patch
+        public static class SGCharacterCreationCareerBackgroundSelectionPanel_Done_Patching
         {
-            private static Regex StarSystemTravel_Restrict =
-                new Regex("^LiS__(?<type>.*?)__(?<ident>.*?)__(?<system>.*?)__(?<hidden>.*)$", RegexOptions.Compiled); //shamelessly stolen from BlueWinds
-
             public static void Postfix(SGCharacterCreationCareerBackgroundSelectionPanel __instance)
             {
+                LostInSpaceInit.modLog.Log($"SGCharacterCreationCareerBackgroundSelectionPanel_Done_Patching.");
+
                 var sim = UnityGameInstance.BattleTechGame.Simulation;
+                LostInSpaceInit.modLog.Log($"SGCharacterCreationCareerBackgroundSelectionPanel_Done_Patching. sim={sim}");
                 if (sim == null) return;
                 foreach (var system in LostInSpaceInit.modSettings.hiddenSystems)
                 {
                     var starsystem = sim.GetSystemById(system.Key);
+                    LostInSpaceInit.modLog.Log($"system.Key={system.Key} starsystem={starsystem}");
                     if (starsystem == null)
                     {
-                        LostInSpaceInit.modLog?.Info?.Write(
-                            $"ERROR: Could not find system with systemId {system.Key}");
+                        LostInSpaceInit.modLog.Log($"ERROR: Could not find system with systemId {system.Key}");
                         continue;
                     }
 
                     foreach (var travelReqs in system.Value)
                     {
-                        LostInSpaceInit.modLog?.Info?.Write(
-                            $"Adding {travelReqs} to {starsystem.Name} tags");
+                        LostInSpaceInit.modLog.Log($"Adding {travelReqs} to {starsystem.Name} tags");
                         starsystem.Tags.Add(travelReqs);
                     }
                 }
 
-                // process tags into restrictions here!!
-
-                foreach (var SGS_system in sim.StarSystems)
-                {
-                    if (!SGS_system.Tags.Any(x => x.StartsWith("LiS__"))) continue;
-
-                    foreach (var tag in SGS_system.Tags.Where(x=>x.StartsWith("LiS__")))
-                    {
-                        MatchCollection matches = StarSystemTravel_Restrict.Matches(tag);
-                        if (matches.Count > 0)
-                        {
-                            
-                            var type = matches[0].Groups["type"].Value;
-
-                            if (type == "NavReq")
-                            {
-                                var reqDef = new RequirementDef()
-                                {
-                                    Scope = EventScope.Company,
-                                    RequirementTags = new TagSet(tag)
-                                };
-
-                                var companyReq =
-                                    SGS_system.Def.TravelRequirements.FirstOrDefault(x =>
-                                        x.Scope == EventScope.Company);
-                                if (companyReq == null) SGS_system.Def.TravelRequirements.Add(reqDef);
-                                else companyReq.RequirementTags.Add(tag);
-                                LostInSpaceInit.modLog?.Info?.Write(
-                                    $"Added TravelRequirements to {SGS_system.Name}: Requirement Tag {tag}");
-                                continue;
-                            }
-
-                            if (type == "NavExc")
-                            {
-                                var excDef = new RequirementDef()
-                                {
-                                    Scope = EventScope.Company,
-                                    ExclusionTags = new TagSet(tag)
-                                };
-
-                                var companyReq =
-                                    SGS_system.Def.TravelRequirements.FirstOrDefault(x =>
-                                        x.Scope == EventScope.Company);
-                                if (companyReq == null) SGS_system.Def.TravelRequirements.Add(excDef);
-                                else companyReq.ExclusionTags.Add(tag);
-                                LostInSpaceInit.modLog?.Info?.Write(
-                                    $"Added TravelRequirements to {SGS_system.Name}: Exclusion Tag {tag}");
-                                continue;
-                            }
-                        }
-                    }
-                }
+                SimGameState_Rehydrate_Patch.Postfix(sim);
             }
         }
-
 
         [HarmonyPatch(typeof(SimGameState), "ApplySimGameEventResult",
             new Type[] {typeof(SimGameEventResult), typeof(List<object>), typeof(SimGameEventTracker)})]
@@ -203,7 +153,7 @@ namespace LostInSpace.Patches
                                 var system = sim.GetSystemById(systemID);
                                 var type = matches[0].Groups["type"].Value;
                                 var tag = addedTag.Remove(0, 4);
-                                LostInSpaceInit.modLog?.Info?.Write(
+                                LostInSpaceInit.modLog.Log(
                                     $"Adding tag {tag}: {systemID}");
                                 system.Tags.Add(tag);
 
@@ -220,7 +170,7 @@ namespace LostInSpace.Patches
                                             x.Scope == EventScope.Company);
                                     if (companyReq == null) system.Def.TravelRequirements.Add(reqDef);
                                     else companyReq.RequirementTags.Add(tag);
-                                    LostInSpaceInit.modLog?.Info?.Write(
+                                    LostInSpaceInit.modLog.Log(
                                         $"Added TravelRequirements to {system.Name}: Requirement Tag {tag}");
                                     result.AddedTags.Remove(addedTag);
                                     continue;
@@ -239,7 +189,7 @@ namespace LostInSpace.Patches
                                             x.Scope == EventScope.Company);
                                     if (companyReq == null) system.Def.TravelRequirements.Add(excDef);
                                     else companyReq.ExclusionTags.Add(tag);
-                                    LostInSpaceInit.modLog?.Info?.Write(
+                                    LostInSpaceInit.modLog.Log(
                                         $"Added TravelRequirements to {system.Name}: Exclusion Tag {tag}");
                                     result.AddedTags.Remove(addedTag);
                                     continue;
@@ -268,7 +218,7 @@ namespace LostInSpace.Patches
                                             x.Scope == EventScope.Company);
                                     if (companyReq == null) continue;
                                     else companyReq.RequirementTags.Remove(tag);
-                                    LostInSpaceInit.modLog?.Info?.Write(
+                                    LostInSpaceInit.modLog.Log(
                                         $"Removed TravelRequirements from {system.Name}: Requirement Tag {tag}");
                                     result.AddedTags.Remove(addedTag);
                                     continue;
@@ -287,7 +237,7 @@ namespace LostInSpace.Patches
                                             x.Scope == EventScope.Company);
                                     if (companyReq == null) continue;
                                     else companyReq.ExclusionTags.Remove(tag);
-                                    LostInSpaceInit.modLog?.Info?.Write(
+                                    LostInSpaceInit.modLog.Log(
                                         $"Removed TravelRequirements from {system.Name}: Exclusion Tag {tag}");
                                     result.AddedTags.Remove(addedTag);
                                     continue;
@@ -298,7 +248,7 @@ namespace LostInSpace.Patches
                         }
                         catch (Exception e)
                         {
-                            LostInSpaceInit.modLog?.Error?.Write(e);
+                            LostInSpaceInit.modLog.LogException(e);
                         }
                     }
                 }
@@ -316,9 +266,6 @@ namespace LostInSpace.Patches
                     var sim = UnityGameInstance.BattleTechGame.Simulation;
                     if (hoveredSystem.Def.TravelRequirements.Any(x => x.ExclusionTags.Any(y => y.EndsWith("__HIDDEN")) || x.RequirementTags.Any(z => z.EndsWith("__HIDDEN"))))
                     {
-                        LostInSpaceInit.modLog?.Trace?.Write(
-                            $"Found hide system condition for {hoveredSystem.Name}");
-
                         var xclTags =
                             hoveredSystem.Def.TravelRequirements.SelectMany(x =>
                                 x.ExclusionTags.Where(y => y.EndsWith("__HIDDEN"))).ToList();
@@ -329,9 +276,6 @@ namespace LostInSpace.Patches
 
                         if (!sim.CompanyTags.Intersect(reqTags).Any() || sim.CompanyTags.Intersect(xclTags).Any())
                         {
-                            LostInSpaceInit.modLog?.Trace?.Write(
-                                $"Company tag for {hoveredSystem.Name} travel/vision tag not found, not displaying hover tooltipicon. ");
-
                             __runOriginal = false;
                             return;
                         }
@@ -355,9 +299,6 @@ namespace LostInSpace.Patches
                             x.ExclusionTags.Any(y => y.EndsWith("__HIDDEN")) ||
                             x.RequirementTags.Any(z => z.EndsWith("__HIDDEN"))))
                     {
-                        LostInSpaceInit.modLog?.Trace?.Write(
-                            $"Found hide system condition for {systemRenderer.system.System.Name}");
-
                         var xclTags =
                             systemRenderer.system.System.Def.TravelRequirements.SelectMany(x =>
                                 x.ExclusionTags.Where(y => y.EndsWith("__HIDDEN"))).ToList();
@@ -368,9 +309,6 @@ namespace LostInSpace.Patches
 
                         if (!sim.CompanyTags.Intersect(reqTags).Any() || sim.CompanyTags.Intersect(xclTags).Any())
                         {
-                            LostInSpaceInit.modLog?.Trace?.Write(
-                                $"Company tag for {systemRenderer.system.System.Name} travel/vision tag not found, not selecting system for routing. ");
-
                             __runOriginal = false;
                             return;
                         }
@@ -390,7 +328,7 @@ namespace LostInSpace.Patches
 
                 if (__instance.system.System.Def.TravelRequirements.Any(x => x.ExclusionTags.Any(y => y.EndsWith("__HIDDEN")) || x.RequirementTags.Any(z => z.EndsWith("__HIDDEN"))))
                 {
-                    LostInSpaceInit.modLog?.Debug?.Write(
+                    LostInSpaceInit.modLog.Log(
                         $"Found hide system condition for {__instance.system.System.Name}");
 
                     var xclTags =
@@ -403,13 +341,10 @@ namespace LostInSpace.Patches
 
                     if (!sim.CompanyTags.Intersect(reqTags).Any() || sim.CompanyTags.Intersect(xclTags).Any())
                     {
-                        LostInSpaceInit.modLog?.Info?.Write(
-                            $"Company tag for {__instance.system.System.Name} travel/vision tag not found, hiding system. ");
-
                         if (Util.WIIC_Cleanup != null)
                         {
                             Util.WIIC_Cleanup.Invoke(null, new object[] { __instance.system.System, });
-                            LostInSpaceInit.modLog?.Debug?.Write(
+                            LostInSpaceInit.modLog.Log(
                                 $"WIIC found, removing flareup from {__instance.system.System.Name}.");
                         }
                         __instance.starInner.gameObject.SetActive(false);
@@ -429,9 +364,6 @@ namespace LostInSpace.Patches
                 var sim = UnityGameInstance.BattleTechGame.Simulation;
                 if (__instance.system.System.Def.TravelRequirements.Any(x => x.ExclusionTags.Any(y => y.EndsWith("__HIDDEN")) || x.RequirementTags.Any(z => z.EndsWith("__HIDDEN"))))
                 {
-                    LostInSpaceInit.modLog?.Trace?.Write(
-                        $"Found hide system condition for {__instance.system.System.Name}");
-
                     var xclTags =
                         __instance.system.System.Def.TravelRequirements.SelectMany(x =>
                             x.ExclusionTags.Where(y => y.EndsWith("__HIDDEN"))).ToList();
@@ -442,9 +374,6 @@ namespace LostInSpace.Patches
 
                     if (!sim.CompanyTags.Intersect(reqTags).Any() || sim.CompanyTags.Intersect(xclTags).Any())
                     {
-                        LostInSpaceInit.modLog?.Trace?.Write(
-                            $"Company tag for {__instance.system.System.Name} travel/vision tag not found, not displaying biome icon. ");
-
                         __runOriginal = false;
                         return;
                     }
@@ -463,9 +392,6 @@ namespace LostInSpace.Patches
                 var sim = UnityGameInstance.BattleTechGame.Simulation;
                 if (__instance.system.System.Def.TravelRequirements.Any(x => x.ExclusionTags.Any(y => y.EndsWith("__HIDDEN")) || x.RequirementTags.Any(z => z.EndsWith("__HIDDEN"))))
                 {
-                    LostInSpaceInit.modLog?.Trace?.Write(
-                        $"Found hide system condition for {__instance.system.System.Name}");
-
                     var xclTags =
                         __instance.system.System.Def.TravelRequirements.SelectMany(x =>
                             x.ExclusionTags.Where(y => y.EndsWith("__HIDDEN"))).ToList();
@@ -476,9 +402,6 @@ namespace LostInSpace.Patches
 
                     if (!sim.CompanyTags.Intersect(reqTags).Any() || sim.CompanyTags.Intersect(xclTags).Any())
                     {
-                        LostInSpaceInit.modLog?.Trace?.Write(
-                            $"Company tag for {__instance.system.System.Name} travel/vision tag not found, not displaying store icon. ");
-
                         __runOriginal = false;
                         return;
                     }
@@ -497,7 +420,7 @@ namespace LostInSpace.Patches
                 var sim = UnityGameInstance.BattleTechGame.Simulation;
                 if (__instance.SystemRenderer.system.System.Def.TravelRequirements.Any(x => x.ExclusionTags.Any(y => y.EndsWith("__HIDDEN")) || x.RequirementTags.Any(z => z.EndsWith("__HIDDEN"))))
                 {
-                    LostInSpaceInit.modLog?.Trace?.Write(
+                    LostInSpaceInit.modLog.Log(
                         $"Found hide system condition for {__instance.SystemRenderer.system.System.Name}");
 
                     var xclTags =
@@ -510,7 +433,7 @@ namespace LostInSpace.Patches
 
                     if (!sim.CompanyTags.Intersect(reqTags).Any() || sim.CompanyTags.Intersect(xclTags).Any())
                     {
-                        LostInSpaceInit.modLog?.Trace?.Write(
+                        LostInSpaceInit.modLog.Log(
                             $"Company tag for {__instance.SystemRenderer.system.System.Name} travel/vision tag not found, not displaying difficulty callout. ");
 
                         __runOriginal = false;
@@ -539,7 +462,7 @@ namespace LostInSpace.Patches
 
                     if (starmapSystemRenderer.system.System.Def.TravelRequirements.Any(x=>x.ExclusionTags.Any(y=>y.EndsWith("__HIDDEN")) || x.RequirementTags.Any(z=>z.EndsWith("__HIDDEN"))))
                     {
-                        LostInSpaceInit.modLog?.Info?.Write(
+                        LostInSpaceInit.modLog.Log(
                             $"Found hide system condition for {starmapSystemRenderer.system.System.Name}");
 
                         var xclTags =
@@ -552,13 +475,10 @@ namespace LostInSpace.Patches
 
                         if(!sim.CompanyTags.Intersect(reqTags).Any() || sim.CompanyTags.Intersect(xclTags).Any())
                         {
-                            LostInSpaceInit.modLog?.Info?.Write(
-                                $"Company tag for {starmapSystemRenderer.system.System.Name} travel/vision tag not found, hiding system. ");
-
                             if (Util.WIIC_Cleanup != null)
                             {
                                 Util.WIIC_Cleanup.Invoke(null, new object[] { starmapSystemRenderer.system.System, });
-                                LostInSpaceInit.modLog?.Info?.Write(
+                                LostInSpaceInit.modLog.Log(
                                     $"WIIC found, removing flareup from {starmapSystemRenderer.system.System.Name}.");
                             }
                             starmapSystemRenderer.SetStarVisibility(false);
